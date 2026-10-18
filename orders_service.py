@@ -30,7 +30,10 @@ async def rate_limit(request: Request, call_next):
     if request.method == "OPTIONS":
         return await call_next(request)
 
-    client_id = request.headers.get("X-Client-Id", "anonymous")
+    client_id = request.headers.get("X-Client-Id")
+
+    if not client_id:
+        return await call_next(request)
     now = time.monotonic()
     bucket = request_times[client_id]
     while bucket and now - bucket[0] >= WINDOW_SECONDS:
