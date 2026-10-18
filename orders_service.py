@@ -27,20 +27,22 @@ request_times: dict[str, deque[float]] = defaultdict(deque)
 
 @app.middleware("http")
 async def rate_limit(request: Request, call_next):
-    if request.method == "OPTIONS":
-        return await call_next(request)
-
     client_id = request.headers.get("X-Client-Id")
 
     if not client_id:
         return await call_next(request)
+
     now = time.monotonic()
     bucket = request_times[client_id]
+
     while bucket and now - bucket[0] >= WINDOW_SECONDS:
         bucket.popleft()
 
     if len(bucket) >= RATE_LIMIT:
-        retry_after = max(1, int(WINDOW_SECONDS - (now - bucket[0]) + 0.999))
+        retry_after = max(
+            1,
+            int(WINDOW_SECONDS - (now - bucket[0]) + 0.999),
+        )
         return Response(
             content='{"detail":"rate limit exceeded"}',
             status_code=429,
